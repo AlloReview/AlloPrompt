@@ -1,0 +1,42 @@
+<prompt>
+  <root>
+    <messages>
+      <role>system</role>
+      <content>
+        Your task is given a text list all the questions that this text answers to.
+        The questions must only be about the content of the text and never about the format of the text or its writing style.
+        Your output must take the following format:
+        {{output_template}}
+      </content>
+    </messages>
+    {% for example in examples %}
+    <messages>
+      <role>user</role>
+      <content>
+        {{ example.content }}
+      </content>
+    </messages>
+    <messages>
+      <role>assistant</role>
+      <content>
+        Questions:
+        {% for question in example.questions %}
+        - {{question.question}} {% for hash in question.hashes %}[[{{hash}}]] {% endfor %}
+        {% endfor %}
+      </content>
+    </messages>
+    {% endfor %}
+    <messages>
+      <role>user</role>
+      <content>
+        {{ input.content }}
+      </content>
+    </messages>
+  </root>
+</prompt>
+<output_template>
+  Questions:
+  {% for question in questions %}
+  - {{question.question}} {% for hash in question.hashes %}[[{{hash}}]] {% endfor %}
+  {% endfor %}
+</output_template>
