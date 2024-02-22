@@ -3,7 +3,11 @@ import yaml
 import json
 import jinja2
 import xmltodict
-from alloprompt.utils import reverse_template_auto, reverse_template_llm_parse
+from alloprompt.utils import (
+    reverse_template_auto,
+    reverse_template_llm_parse,
+    recursive_escape_xml,
+)
 
 
 def unindent(text):
@@ -47,6 +51,7 @@ class Prompt:
         self.cache = {}
 
     def __render(self, inputs):
+        inputs = recursive_escape_xml(json.loads(json.dumps(inputs)))
         rendered_prompt = self.environment.from_string(
             self.template["prompt"], self.cache
         ).render(

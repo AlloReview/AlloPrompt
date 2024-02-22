@@ -159,3 +159,42 @@ def reverse_template_llm_parse(rendered_template, template, *args, **kwargs):
     )
 
     return json.loads(response.choices[0].message.content)["values"]
+
+
+def escape_xml_characters(input_string):
+    """
+    Escapes characters that have special meaning in XML.
+
+    Args:
+        input_string (str): The string to be escaped.
+
+    Returns:
+        str: The escaped string where characters like '<', '>', '&', '"', and "'" are replaced with their corresponding XML entities.
+    """
+    return (
+        input_string.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&apos;")
+    )
+
+
+def recursive_escape_xml(input_object):
+    """
+    Recursively navigate through any string, object, or array and apply escape_xml_characters to every string.
+
+    Args:
+        input_object (str, list, dict): The input that may contain strings to be escaped.
+
+    Returns:
+        The input object with all its strings XML-escaped.
+    """
+    if isinstance(input_object, str):
+        return escape_xml_characters(input_object)
+    elif isinstance(input_object, list):
+        return [recursive_escape_xml(item) for item in input_object]
+    elif isinstance(input_object, dict):
+        return {key: recursive_escape_xml(value) for key, value in input_object.items()}
+    else:
+        return input_object  # If it's not a string, list, or dict, return it unchanged.
