@@ -29,7 +29,13 @@ def get_tag_content(tag, xml):
 
 class Prompt:
     def __init__(
-        self, path, data={}, functions={}, output_parsing_function="llm_parse"
+        self,
+        path,
+        data={},
+        data_path=None,
+        functions={},
+        output_parsing_function="llm_parse",
+        default_chat_complete_args={},
     ):
         with open(path, "r") as file:
             template = file.read()
@@ -46,9 +52,13 @@ class Prompt:
         if type(output_parsing_function) is type(lambda: None):
             self.reverse_template = output_parsing_function
         self.data = data
+        if data_path is not None:
+            with open(data_path, "r") as file:
+                self.data = {**self.data, **yaml.safe_load(file)}
         self.functions = functions
         self.environment = jinja2.Environment()
         self.cache = {}
+        self.default_chat_complete_args = default_chat_complete_args
 
     def __render(self, inputs):
         inputs = recursive_escape_xml(json.loads(json.dumps(inputs)))
@@ -76,9 +86,10 @@ class Prompt:
                     rendered_prompt["messages"], default_style="|", sort_keys=False
                 )
             )
+        chat_complete_args = {**self.default_chat_complete_args, **kwargs}
         response = (
             client.chat.completions.create(
-                messages=rendered_prompt["messages"], *args, **kwargs
+                messages=rendered_prompt["messages"], *args, **chat_complete_args
             )
             .choices[0]
             .message.content
