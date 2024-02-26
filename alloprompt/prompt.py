@@ -60,11 +60,15 @@ class Prompt:
         self.cache = {}
         self.default_chat_complete_args = default_chat_complete_args
 
-    def __render(self, inputs):
+    def render(self, template, **data):
+        return self.environment.from_string(template).render(
+            **data, render=lambda t, d: self.render(t, **d)
+        )
+
+    def render_prompt(self, inputs, debug=False):
         inputs = recursive_escape_xml(json.loads(json.dumps(inputs)))
-        rendered_prompt = self.environment.from_string(
-            self.template["prompt"], self.cache
-        ).render(
+        rendered_prompt = self.render(
+            self.template["prompt"],
             input=inputs,
             data=self.data,
             output_template=self.template["output_template"],
@@ -75,17 +79,19 @@ class Prompt:
         except Exception as e:
             print(rendered_prompt)
             raise e
-        return rendered_prompt
-
-    def chat_complete(self, inputs, client, debug=False, *args, **kwargs):
-        rendered_prompt = self.__render(inputs)
         if debug:
             print("Messages:")
             print(
                 yaml.dump(
-                    rendered_prompt["messages"], default_style="|", sort_keys=False
+                    rendered_prompt["messages"],
+                    default_style="|",
+                    sort_keys=False,
                 )
             )
+        return rendered_prompt
+
+    def chat_complete(self, inputs, client, debug=False, *args, **kwargs):
+        rendered_prompt = self.render_prompt(inputs, debug)
         chat_complete_args = {**self.default_chat_complete_args, **kwargs}
         response = (
             client.chat.completions.create(
