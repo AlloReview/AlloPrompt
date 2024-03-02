@@ -7,6 +7,7 @@ from alloprompt.utils import (
     reverse_template_auto,
     reverse_template_llm_parse,
     recursive_escape_xml,
+    convert_dict_to_yaml,
 )
 
 
@@ -42,6 +43,7 @@ class Prompt:
         self.template = {
             "prompt": get_tag_content("prompt", template),
             "output_template": get_tag_content("output_template", template),
+            "components": xmltodict.parse(get_tag_content("components", template)),
         }
         if output_parsing_function is None:
             self.reverse_template = lambda response, _, __: response
@@ -70,8 +72,9 @@ class Prompt:
         rendered_prompt = self.render(
             self.template["prompt"],
             input=inputs,
-            data=self.data,
+            data=recursive_escape_xml(json.loads(json.dumps(self.data))),
             output_template=self.template["output_template"],
+            components=self.template["components"],
             functions=self.functions,
         )
         try:
@@ -81,13 +84,7 @@ class Prompt:
             raise e
         if debug:
             print("Messages:")
-            print(
-                yaml.dump(
-                    rendered_prompt["messages"],
-                    default_style="|",
-                    sort_keys=False,
-                )
-            )
+            print(convert_dict_to_yaml(rendered_prompt["messages"]))
         return rendered_prompt
 
     def chat_complete(self, inputs, client, debug=False, *args, **kwargs):

@@ -1,3 +1,4 @@
+import yaml
 import json
 
 code_gen_client = None
@@ -198,3 +199,16 @@ def recursive_escape_xml(input_object):
         return {key: recursive_escape_xml(value) for key, value in input_object.items()}
     else:
         return input_object  # If it's not a string, list, or dict, return it unchanged.
+
+
+class CustomDumper(yaml.SafeDumper):
+    def represent_scalar(self, tag, value, style=None):
+        if "\n" in value:
+            style = "|"
+        return super(CustomDumper, self).represent_scalar(tag, value, style)
+
+
+def convert_dict_to_yaml(data_dict):
+    return yaml.dump(
+        data_dict, Dumper=CustomDumper, default_flow_style=False, sort_keys=False
+    )
