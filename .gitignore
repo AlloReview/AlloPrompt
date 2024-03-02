@@ -151,6 +151,6 @@ cython_debug/
 nbproject/
 *.code-workspace
 
-**/__pycache__/
-**/*.pyc
+alloprompt/__pycache__/
+*/*.pyc
 
