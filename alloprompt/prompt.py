@@ -25,6 +25,8 @@ def unindent(text):
 
 def get_tag_content(tag, xml):
     pattern = re.compile(rf"<{tag}>(.*?)</{tag}>", re.DOTALL)
+    if len(pattern.findall(xml)) == 0:
+        return None
     return unindent(pattern.findall(xml)[0]).strip()
 
 
@@ -43,7 +45,11 @@ class Prompt:
         self.template = {
             "prompt": get_tag_content("prompt", template),
             "output_template": get_tag_content("output_template", template),
-            "components": xmltodict.parse(get_tag_content("components", template)),
+            "components": (
+                xmltodict.parse(get_tag_content("components", template))
+                if get_tag_content("components", template)
+                else {}
+            ),
         }
         if output_parsing_function is None:
             self.reverse_template = lambda response, _, __: response
