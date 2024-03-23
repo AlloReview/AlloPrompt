@@ -8,6 +8,8 @@ from alloprompt.utils import (
     reverse_template_llm_parse,
     recursive_escape_xml,
     convert_dict_to_yaml,
+    otag,
+    ctag,
 )
 
 
@@ -39,6 +41,7 @@ class Prompt:
         functions={},
         output_parsing_function="llm_parse",
         default_chat_complete_args={},
+        default_client=None,
     ):
         with open(path, "r") as file:
             template = file.read()
@@ -67,13 +70,17 @@ class Prompt:
         self.environment = jinja2.Environment()
         self.cache = {}
         self.default_chat_complete_args = default_chat_complete_args
+        self.default_client = default_client
 
     def render(self, template, **data):
         return self.environment.from_string(template).render(
-            **data, render=lambda t, d: self.render(t, **d)
+            **data, render=lambda t, d: self.render(t, **d), otag=otag, ctag=ctag, to_yaml=convert_dict_to_yaml
         )
 
-    def render_prompt(self, inputs, debug=False):
+    def render_prompt(self, inputs=None, inputs_yaml=None, debug=False):
+        if inputs_yaml:
+            with open(inputs_yaml, "r") as file:
+                inputs = yaml.safe_load(file)
         inputs = recursive_escape_xml(json.loads(json.dumps(inputs)))
         rendered_prompt = self.render(
             self.template["prompt"],
@@ -93,13 +100,15 @@ class Prompt:
             print(convert_dict_to_yaml(rendered_prompt["messages"]))
         return rendered_prompt
 
-    def chat_complete(self, inputs, client, debug=False, *args, **kwargs):
-        rendered_prompt = self.render_prompt(inputs, debug)
+    def chat_complete(
+        self, inputs=None, inputs_yaml=None, client=None, debug=False, output_as_yaml=False, *args, **kwargs
+    ):
+        if client is None:
+            client = self.default_client
+        rendered_prompt = self.render_prompt(inputs, inputs_yaml, debug)
         chat_complete_args = {**self.default_chat_complete_args, **kwargs}
         response = (
-            client.chat.completions.create(
-                messages=rendered_prompt["messages"], *args, **chat_complete_args
-            )
+            client.chat.completions.create(messages=rendered_prompt["messages"], *args, **chat_complete_args)
             .choices[0]
             .message.content
         )
@@ -107,11 +116,13 @@ class Prompt:
             print("Response:")
             print(response)
         try:
-            return self.reverse_template(
-                response, self.template["output_template"], self.cache
-            )
+            result = self.reverse_template(response, self.template["output_template"], self.cache)
+            if output_as_yaml:
+                return convert_dict_to_yaml(result)
+            else:
+                return result
         except Exception as e:
             raise Exception(f'Error "{e}" while parsing the response:\n{response}')
 
     def print_as_json(self, inputs=None):
-        print(json.dumps(self.__render(inputs), indent=2))
+        print(json.dumps(self.render(inputs), indent=2))

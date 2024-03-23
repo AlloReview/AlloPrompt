@@ -31,9 +31,7 @@ def set_code_gen_model(model):
 
 def reverse_template_code(template, additional_messages=[]):
     if code_gen_client is None:
-        raise ValueError(
-            "Please set the code_gen_client variable to the ChatCompletion client"
-        )
+        raise ValueError("Please set the code_gen_client variable to the ChatCompletion client")
     messages = (
         [
             {
@@ -56,12 +54,7 @@ def reverse_template_code(template, additional_messages=[]):
         messages=messages, model=code_gen_model, temperature=0, max_tokens=2048
     )
     if "```python" in chat_completion.choices[0].message.content:
-        return (
-            chat_completion.choices[0]
-            .message.content.split("```python")[1]
-            .split("```")[0]
-            .strip()
-        )
+        return chat_completion.choices[0].message.content.split("```python")[1].split("```")[0].strip()
     if "```" in chat_completion.choices[0].message.content:
         return chat_completion.choices[0].message.content.split("```")[1].strip()
     return chat_completion.choices[0].message.content.strip()
@@ -122,9 +115,7 @@ def reverse_template_auto(rendered_template, template, cache={}):
 
 def reverse_template_llm_parse(rendered_template, template, *args, **kwargs):
     if parse_client is None:
-        raise ValueError(
-            "Please set the code_gen_client variable to the ChatCompletion client"
-        )
+        raise ValueError("Please set the code_gen_client variable to the ChatCompletion client")
     response = parse_client.chat.completions.create(
         messages=[
             {
@@ -209,6 +200,12 @@ class CustomDumper(yaml.SafeDumper):
 
 
 def convert_dict_to_yaml(data_dict):
-    return yaml.dump(
-        data_dict, Dumper=CustomDumper, default_flow_style=False, sort_keys=False
-    )
+    return yaml.dump(data_dict, Dumper=CustomDumper, default_flow_style=False, sort_keys=False)
+
+
+def otag(tag):
+    return f"&lt;{tag}&gt;"
+
+
+def ctag(tag):
+    return f"&lt;/{tag}&gt;"
