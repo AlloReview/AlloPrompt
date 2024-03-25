@@ -192,15 +192,19 @@ def recursive_escape_xml(input_object):
         return input_object  # If it's not a string, list, or dict, return it unchanged.
 
 
-class CustomDumper(yaml.SafeDumper):
-    def represent_scalar(self, tag, value, style=None):
-        if "\n" in value:
-            style = "|"
-        return super(CustomDumper, self).represent_scalar(tag, value, style)
+def str_presenter(dumper, data):
+    if "\n" in data:  # check for presence of newline character
+        # Strip leading and trailing whitespace from each line
+        data = "\n".join([line.rstrip() for line in data.strip().splitlines()])
+        return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
+
+yaml.add_representer(str, str_presenter)
 
 
 def convert_dict_to_yaml(data_dict):
-    return yaml.dump(data_dict, Dumper=CustomDumper, default_flow_style=False, sort_keys=False)
+    return yaml.dump(data_dict, sort_keys=False)
 
 
 def otag(tag):
