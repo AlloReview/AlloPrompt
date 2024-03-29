@@ -77,10 +77,10 @@ class Prompt:
             **data, render=lambda t, d: self.render(t, **d), otag=otag, ctag=ctag, to_yaml=convert_dict_to_yaml
         )
 
-    def render_prompt(self, inputs=None, inputs_yaml=None, debug=False):
+    def render_prompt(self, inputs={}, inputs_yaml=None, debug=False):
         if inputs_yaml:
             with open(inputs_yaml, "r") as file:
-                inputs = yaml.safe_load(file)
+                inputs = {**yaml.safe_load(file), **inputs}
         inputs = recursive_escape_xml(json.loads(json.dumps(inputs)))
         rendered_prompt = self.render(
             self.template["prompt"],
