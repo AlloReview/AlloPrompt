@@ -204,7 +204,7 @@ yaml.add_representer(str, str_presenter)
 
 
 def convert_dict_to_yaml(data_dict):
-    return yaml.dump(data_dict, sort_keys=False)
+    return yaml.dump(data_dict, sort_keys=False, default_flow_style=False, allow_unicode=True)
 
 
 def otag(tag):
