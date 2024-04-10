@@ -110,20 +110,21 @@ class Prompt:
         rendered_prompt = self.render_prompt(inputs, inputs_yaml, debug)
         chat_complete_args = {**self.default_chat_complete_args, **kwargs}
         response = client.chat.completions.create(messages=rendered_prompt["messages"], *args, **chat_complete_args)
-        if not (chat_complete_args.get("stream", False)):
-            response = response.choices[0].message.content
         if debug:
             print("Response:")
             print(response)
         try:
             if chat_complete_args.get("stream", False):
-                response_text = ""
-                for r in response:
-                    if len(r.choices) == 0:
-                        continue
-                    response_text += r.choices[0].delta.content or ""
-                    yield self.stream_output_parsing_function(response_text)
+
+                def iterate_responses(generator):
+                    response_text = ""
+                    for response in generator:
+                        response_text += response.choices[0].delta.content or ""
+                        yield self.stream_output_parsing_function(response_text)
+
+                return iterate_responses(response)
             else:
+                response = response.choices[0].message.content
                 result = self.reverse_template(response, self.template["output_template"], self.cache)
                 if output_as_yaml:
                     return convert_dict_to_yaml(result)
