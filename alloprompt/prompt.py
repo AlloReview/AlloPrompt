@@ -40,6 +40,7 @@ class Prompt:
         data_path=None,
         functions={},
         output_parsing_function="llm_parse",
+        stream_output_parsing_function=lambda x: x,
         default_chat_complete_args={},
         default_client=None,
     ):
@@ -71,6 +72,7 @@ class Prompt:
         self.cache = {}
         self.default_chat_complete_args = default_chat_complete_args
         self.default_client = default_client
+        self.stream_output_parsing_function = stream_output_parsing_function
 
     def render(self, template, **data):
         return self.environment.from_string(template).render(
@@ -107,20 +109,26 @@ class Prompt:
             client = self.default_client
         rendered_prompt = self.render_prompt(inputs, inputs_yaml, debug)
         chat_complete_args = {**self.default_chat_complete_args, **kwargs}
-        response = (
-            client.chat.completions.create(messages=rendered_prompt["messages"], *args, **chat_complete_args)
-            .choices[0]
-            .message.content
-        )
+        response = client.chat.completions.create(messages=rendered_prompt["messages"], *args, **chat_complete_args)
+        if not (chat_complete_args.get("stream", False)):
+            response = response.choices[0].message.content
         if debug:
             print("Response:")
             print(response)
         try:
-            result = self.reverse_template(response, self.template["output_template"], self.cache)
-            if output_as_yaml:
-                return convert_dict_to_yaml(result)
+            if chat_complete_args.get("stream", False):
+                response_text = ""
+                for r in response:
+                    if len(r.choices) == 0:
+                        continue
+                    response_text += r.choices[0].delta.content or ""
+                    yield self.stream_output_parsing_function(response_text)
             else:
-                return result
+                result = self.reverse_template(response, self.template["output_template"], self.cache)
+                if output_as_yaml:
+                    return convert_dict_to_yaml(result)
+                else:
+                    return result
         except Exception as e:
             raise Exception(f'Error "{e}" while parsing the response:\n{response}')
 
