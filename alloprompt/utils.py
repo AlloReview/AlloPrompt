@@ -1,10 +1,55 @@
+import sys
 import yaml
 import json
+import tempfile
+import xmltodict
+import traceback
+from jinja2 import Environment, FileSystemLoader
 
 code_gen_client = None
 parse_client = None
 code_gen_model = "gpt-4-turbo-preview"
 parse_model = "gpt-3.5-turbo"
+
+
+def render_jinja2(template_str, **kwargs):
+    env = Environment(loader=FileSystemLoader("/"))
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+        temp_file.write(template_str)
+        temp_file.seek(0)
+        temp_path = temp_file.name
+        template = env.get_template(temp_path)
+
+    try:
+        rendered = template.render(**kwargs)
+        return rendered
+    except Exception:
+        _, __, exc_traceback = sys.exc_info()
+        traceback_lines = traceback.extract_tb(exc_traceback)
+
+        filtered_traceback = [line for line in traceback_lines if line.filename == temp_path]
+
+        if len(filtered_traceback) == 0:
+            raise Exception("\n".join(traceback.format_list(traceback_lines)))
+
+        raise Exception("\n".join(traceback.format_list(filtered_traceback)))
+
+
+def parse_xml(xml):
+    try:
+        doc = xmltodict.parse(xml)
+        return doc
+    except xmltodict.expat.ExpatError as e:
+        error_lines = []
+        error_lines.append("XML parsing error:")
+        xml_debug = xml.split("\n")
+        for i in range(max(0, e.lineno - 10), min(len(xml_debug), e.lineno + 10)):
+            if i == e.lineno - 1:
+                error_lines.append(f"{i + 1}: {'>> '}{xml_debug[i]}")
+                error_lines.append(f"{'  ' * (e.offset - 1)}^")
+            else:
+                error_lines.append(f"{i + 1}: {xml_debug[i]}")
+        raise ValueError("\n".join(error_lines))
 
 
 def set_code_gen_client(client):

@@ -1,13 +1,13 @@
 import re
 import yaml
 import json
-import jinja2
-import xmltodict
 from alloprompt.utils import (
     reverse_template_auto,
     reverse_template_llm_parse,
     recursive_escape_xml,
     convert_dict_to_yaml,
+    render_jinja2,
+    parse_xml,
     otag,
     ctag,
 )
@@ -50,9 +50,7 @@ class Prompt:
             "prompt": get_tag_content("prompt", template),
             "output_template": get_tag_content("output_template", template),
             "components": (
-                xmltodict.parse(get_tag_content("components", template))
-                if get_tag_content("components", template)
-                else {}
+                parse_xml(get_tag_content("components", template)) if get_tag_content("components", template) else {}
             ),
         }
         if output_parsing_function is None:
@@ -68,15 +66,19 @@ class Prompt:
             with open(data_path, "r") as file:
                 self.data = {**self.data, **yaml.safe_load(file)}
         self.functions = functions
-        self.environment = jinja2.Environment()
         self.cache = {}
         self.default_chat_complete_args = default_chat_complete_args
         self.default_client = default_client
         self.stream_output_parsing_function = stream_output_parsing_function
 
     def render(self, template, **data):
-        return self.environment.from_string(template).render(
-            **data, render=lambda t, d: self.render(t, **d), otag=otag, ctag=ctag, to_yaml=convert_dict_to_yaml
+        return render_jinja2(
+            template,
+            **data,
+            render=lambda t, d: self.render(t, **d),
+            otag=otag,
+            ctag=ctag,
+            to_yaml=convert_dict_to_yaml,
         )
 
     def render_prompt(self, inputs={}, inputs_yaml=None, debug=False):
@@ -93,7 +95,7 @@ class Prompt:
             functions=self.functions,
         )
         try:
-            rendered_prompt = xmltodict.parse(rendered_prompt)["root"]
+            rendered_prompt = parse_xml(rendered_prompt)["root"]
         except Exception as e:
             print(rendered_prompt)
             raise e
