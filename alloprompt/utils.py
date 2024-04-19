@@ -252,8 +252,11 @@ def convert_dict_to_yaml(data_dict):
     return yaml.dump(data_dict, sort_keys=False, default_flow_style=False, allow_unicode=True)
 
 
-def otag(tag):
-    return f"&lt;{tag}&gt;"
+def otag(tag, **attributes):
+    attributes_str = " ".join([f'{key}="{value}"' for key, value in attributes.items()])
+    if len(attributes_str) > 0:
+        attributes_str = " " + attributes_str
+    return f"&lt;{tag}{attributes_str}&gt;"
 
 
 def ctag(tag):
